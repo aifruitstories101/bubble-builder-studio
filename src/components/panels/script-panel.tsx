@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useEditor } from "@/store/editor";
 import { serializeScript } from "@/lib/script-serializer";
+import { parseScriptForAssets } from "@/lib/script-parser";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Copy, Download, Upload } from "lucide-react";
@@ -8,7 +9,26 @@ import { toast } from "sonner";
 
 export function ScriptPanel() {
   const state = useEditor();
+  const importFromScript = useEditor((s) => s.importFromScript);
   const script = useMemo(() => serializeScript(state), [state]);
+
+  const handleUpload = () => {
+    const inp = document.createElement("input");
+    inp.type = "file";
+    inp.accept = ".txt,text/plain";
+    inp.onchange = () => {
+      const f = inp.files?.[0];
+      if (!f) return;
+      f.text().then((raw) => {
+        const parsed = parseScriptForAssets(raw);
+        const { addedSpeakers, addedSfx } = importFromScript(parsed);
+        toast.success(
+          `Imported script — ${addedSpeakers} new speaker${addedSpeakers === 1 ? "" : "s"}, ${addedSfx} new SFX. Add voice IDs in TTS panel & upload SFX audio.`
+        );
+      });
+    };
+    inp.click();
+  };
 
   return (
     <div className="space-y-4">
@@ -38,20 +58,7 @@ export function ScriptPanel() {
           >
             <Download className="mr-1 h-4 w-4" /> Download
           </Button>
-          <Button
-            size="sm"
-            onClick={() => {
-              const inp = document.createElement("input");
-              inp.type = "file";
-              inp.accept = ".txt,text/plain";
-              inp.onchange = () => {
-                const f = inp.files?.[0];
-                if (!f) return;
-                f.text().then(() => toast.success("Imported — visual editor sync coming next."));
-              };
-              inp.click();
-            }}
-          >
+          <Button size="sm" onClick={handleUpload}>
             <Upload className="mr-1 h-4 w-4" /> Upload
           </Button>
         </div>
@@ -62,7 +69,7 @@ export function ScriptPanel() {
         className="min-h-[500px] font-mono text-xs"
       />
       <p className="text-xs text-muted-foreground">
-        Live-generated from the visual editor. Two-way sync is available in the next update.
+        Uploading a script auto-extracts speakers and SFX. Assign voice IDs in the TTS panel and upload SFX audio in the SFX panel.
       </p>
     </div>
   );

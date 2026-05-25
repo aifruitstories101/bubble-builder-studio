@@ -132,10 +132,20 @@ export function TtsPanel() {
           </Button>
         </div>
         {s.customVoices.length > 0 && (
-          <ul className="mt-3 space-y-1">
-            {s.customVoices.map((v) => (
-              <li key={v.id} className="flex items-center justify-between rounded-md bg-muted px-3 py-1.5 text-xs">
-                <span><span className="font-medium">{v.name}</span> <span className="ml-2 font-mono text-muted-foreground">{v.id}</span></span>
+          <ul className="mt-3 space-y-1.5">
+            {s.customVoices.map((v, idx) => (
+              <li key={`${v.name}-${idx}`} className="grid grid-cols-[1fr_1.4fr_auto] items-center gap-2 rounded-md bg-muted px-2 py-1.5 text-xs">
+                <Input
+                  value={v.name}
+                  onChange={(e) => s.updateCustomVoice(v.id, { name: e.target.value })}
+                  className="h-7 text-xs"
+                />
+                <Input
+                  value={v.id}
+                  onChange={(e) => s.updateCustomVoice(v.id, { id: e.target.value })}
+                  placeholder="Voice ID (required)"
+                  className={cn("h-7 font-mono text-xs", !v.id && "border-amber-400")}
+                />
                 <button onClick={() => s.removeCustomVoice(v.id)} className="text-destructive">
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>

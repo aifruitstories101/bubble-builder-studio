@@ -24,7 +24,7 @@ export function SfxPanel() {
   };
 
   const play = (url?: string) => {
-    if (!url) return toast.info("No audio attached to this preset");
+    if (!url) return toast.info("No audio attached");
     const a = new Audio(url);
     a.play().catch(() => toast.error("Failed to play audio"));
   };
@@ -36,38 +36,32 @@ export function SfxPanel() {
       <div className="rounded-xl border bg-card p-4">
         <h3 className="mb-3 text-sm font-semibold">Default chat sounds</h3>
         <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <Label className="text-xs">Sent</Label>
-            <div className="mt-1 flex gap-2">
-              <Input value={s.sentSfx} onChange={(e) => s.patch({ sentSfx: e.target.value })} />
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => upload((url, name) => s.patch({ sentSfx: url || name }))}
-              >
-                <Upload className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-          <div>
-            <Label className="text-xs">Received</Label>
-            <div className="mt-1 flex gap-2">
-              <Input value={s.receivedSfx} onChange={(e) => s.patch({ receivedSfx: e.target.value })} />
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => upload((url, name) => s.patch({ receivedSfx: url || name }))}
-              >
-                <Upload className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+          <SfxRow
+            label="Sent"
+            name={s.sentSfx}
+            url={s.sentSfxUrl}
+            onName={(v) => s.patch({ sentSfx: v })}
+            onUpload={() =>
+              upload((url, name) => s.patch({ sentSfx: name, sentSfxUrl: url }))
+            }
+            onPlay={() => play(s.sentSfxUrl)}
+          />
+          <SfxRow
+            label="Received"
+            name={s.receivedSfx}
+            url={s.receivedSfxUrl}
+            onName={(v) => s.patch({ receivedSfx: v })}
+            onUpload={() =>
+              upload((url, name) => s.patch({ receivedSfx: name, receivedSfxUrl: url }))
+            }
+            onPlay={() => play(s.receivedSfxUrl)}
+          />
         </div>
       </div>
 
       <div className="rounded-xl border bg-card p-4">
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-sm font-semibold">SFX library</h3>
+          <h3 className="text-sm font-semibold">Uploaded SFX</h3>
           <Button
             size="sm"
             onClick={() =>
@@ -79,31 +73,65 @@ export function SfxPanel() {
             <Upload className="mr-1 h-4 w-4" /> Upload SFX
           </Button>
         </div>
-        <ul className="divide-y">
-          {s.sfxLibrary.map((x) => (
-            <li key={x.id} className="flex items-center justify-between py-2 text-sm">
-              <span className="font-medium">{x.name}</span>
-              <div className="flex items-center gap-1">
-                <Button variant="ghost" size="icon" onClick={() => play(x.url)}>
-                  <Play className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-destructive"
-                  onClick={() =>
-                    s.patch({ sfxLibrary: s.sfxLibrary.filter((y) => y.id !== x.id) })
-                  }
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </li>
-          ))}
-        </ul>
-        <p className="mt-3 text-xs text-muted-foreground">
-          Attach any SFX per bubble from the chat editor.
-        </p>
+        {s.sfxLibrary.length === 0 ? (
+          <p className="text-xs text-muted-foreground">
+            No uploads yet. Only your uploaded SFX (plus Sent/Received) are usable per bubble.
+          </p>
+        ) : (
+          <ul className="divide-y">
+            {s.sfxLibrary.map((x) => (
+              <li key={x.id} className="flex items-center justify-between py-2 text-sm">
+                <span className="font-medium">{x.name}</span>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="icon" onClick={() => play(x.url)}>
+                    <Play className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive"
+                    onClick={() =>
+                      s.patch({ sfxLibrary: s.sfxLibrary.filter((y) => y.id !== x.id) })
+                    }
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SfxRow({
+  label,
+  name,
+  url,
+  onName,
+  onUpload,
+  onPlay,
+}: {
+  label: string;
+  name: string;
+  url?: string;
+  onName: (v: string) => void;
+  onUpload: () => void;
+  onPlay: () => void;
+}) {
+  return (
+    <div>
+      <Label className="text-xs">{label}</Label>
+      <div className="mt-1 flex gap-2">
+        <Input value={name} onChange={(e) => onName(e.target.value)} />
+        <Button variant="outline" size="icon" onClick={onPlay} disabled={!url}>
+          <Play className="h-4 w-4" />
+        </Button>
+        <Button variant="outline" size="icon" onClick={onUpload}>
+          <Upload className="h-4 w-4" />
+        </Button>
       </div>
     </div>
   );
