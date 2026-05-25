@@ -2,13 +2,7 @@ import { useEditor } from "@/store/editor";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-
-const PRESETS = [
-  "#00ff00", "#000000", "#ffffff", "#3b82f6", "#ef4444",
-  "#f59e0b", "#10b981", "#8b5cf6", "#ec4899", "#0ea5e9",
-];
 
 export function AppearancePanel() {
   const s = useEditor();
@@ -57,61 +51,14 @@ export function AppearancePanel() {
         </div>
       </Section>
 
-      <Section title={`Corner radius — ${s.cornerRadius}px`}>
-        <div className="flex items-center gap-3">
-          <Slider
-            value={[s.cornerRadius]}
-            min={0}
-            max={60}
-            step={1}
-            onValueChange={(v) => s.patch({ cornerRadius: v[0] })}
-            className="flex-1"
-          />
-          <Input
-            type="number"
-            value={s.cornerRadius}
-            onChange={(e) => s.patch({ cornerRadius: Number(e.target.value) })}
-            className="h-8 w-20"
-          />
-        </div>
-      </Section>
-
       <Section title={`Bubble font size — ${s.bubbleFontSize}px`}>
         <Slider
           value={[s.bubbleFontSize]}
-          min={10}
-          max={36}
+          min={30}
+          max={80}
           step={1}
           onValueChange={(v) => s.patch({ bubbleFontSize: v[0] })}
         />
-      </Section>
-
-      <Section title="Background color">
-        <div className="flex flex-wrap items-center gap-2">
-          {PRESETS.map((p) => (
-            <button
-              key={p}
-              onClick={() => s.patch({ bgColor: p })}
-              className={cn(
-                "h-8 w-8 rounded-full border-2 transition-transform hover:scale-110",
-                s.bgColor === p ? "border-foreground" : "border-border"
-              )}
-              style={{ background: p }}
-            />
-          ))}
-          <Input
-            type="color"
-            value={/^#[0-9a-f]{6}$/i.test(s.bgColor) ? s.bgColor : "#00ff00"}
-            onChange={(e) => s.patch({ bgColor: e.target.value })}
-            className="h-8 w-12 p-1"
-          />
-          <Input
-            value={s.bgColor}
-            onChange={(e) => s.patch({ bgColor: e.target.value })}
-            placeholder="#hex or rgb()"
-            className="h-8 w-32 text-xs"
-          />
-        </div>
       </Section>
 
       <Section title={`Bottom reserve — ${(s.bottomReserveRatio * 100).toFixed(0)}%`}>

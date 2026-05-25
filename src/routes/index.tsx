@@ -7,7 +7,6 @@ import {
 } from "@/components/ui/sidebar";
 import { AppSidebar, type PanelKey } from "@/components/app-sidebar";
 import { ChatEditor } from "@/components/chat-editor";
-import { PhonePreview } from "@/components/phone-preview";
 import { ContactsPanel } from "@/components/panels/contacts-panel";
 import { AppearancePanel } from "@/components/panels/appearance-panel";
 import { TtsPanel } from "@/components/panels/tts-panel";
@@ -54,19 +53,14 @@ function App() {
             )}
           </header>
 
-          <main className="grid grid-cols-1 gap-6 p-6 xl:grid-cols-[1fr_360px]">
-            <div className="min-w-0">
-              {panel === "chat" && <ChatEditor />}
-              {panel === "contacts" && <ContactsPanel />}
-              {panel === "script" && <ScriptPanel />}
-              {panel === "appearance" && <AppearancePanel />}
-              {panel === "tts" && <TtsPanel />}
-              {panel === "sfx" && <SfxPanel />}
-              {panel === "export" && <ExportPanel />}
-            </div>
-            <aside className="hidden xl:block">
-              <PhonePreview />
-            </aside>
+          <main className="mx-auto w-full max-w-5xl p-6">
+            {panel === "chat" && <ChatEditor />}
+            {panel === "contacts" && <ContactsPanel />}
+            {panel === "script" && <ScriptPanel />}
+            {panel === "appearance" && <AppearancePanel />}
+            {panel === "tts" && <TtsPanel />}
+            {panel === "sfx" && <SfxPanel />}
+            {panel === "export" && <ExportPanel />}
           </main>
         </SidebarInset>
       </div>

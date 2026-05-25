@@ -40,6 +40,8 @@ export type Contact = {
 
 export type TTSProvider = "elevenlabs" | "ai33pro";
 
+export type SfxItem = { id: string; name: string; url?: string };
+
 export type EditorState = {
   contacts: Contact[];
   activeContactId: string;
@@ -60,9 +62,11 @@ export type EditorState = {
   customVoices: { id: string; name: string }[];
   voiceSettings: { stability: number; similarity: number; style: number; speed: number };
   silenceTrim: { enabled: boolean; threshold: number; minSilenceMs: number };
-  sfxLibrary: { id: string; name: string; url?: string }[];
+  sfxLibrary: SfxItem[];
   sentSfx: string;
+  sentSfxUrl?: string;
   receivedSfx: string;
+  receivedSfxUrl?: string;
   // ui
   rawMode: boolean;
 };
@@ -78,8 +82,12 @@ type Actions = {
   reorderBubbles: (contactId: string, fromIdx: number, toIdx: number) => void;
   patch: (p: Partial<EditorState>) => void;
   addCustomVoice: (v: { id: string; name: string }) => void;
+  updateCustomVoice: (oldId: string, patch: { id?: string; name?: string }) => void;
   removeCustomVoice: (id: string) => void;
-  addSfx: (s: { id: string; name: string; url?: string }) => void;
+  addSfx: (s: SfxItem) => void;
+  importFromScript: (
+    parsed: { speakers: string[]; sfx: string[] }
+  ) => { addedSpeakers: number; addedSfx: number };
 };
 
 const uid = () => Math.random().toString(36).slice(2, 10);
@@ -115,7 +123,7 @@ export const useEditor = create<EditorState & Actions>()(
         theme: "light",
         bubbleColor: "blue",
         cornerRadius: 22,
-        bubbleFontSize: 16,
+        bubbleFontSize: 40,
         bgColor: "#00ff00",
         posterEveryPage: false,
         revealAnimation: true,
@@ -127,14 +135,9 @@ export const useEditor = create<EditorState & Actions>()(
         customVoices: [],
         voiceSettings: { stability: 0.5, similarity: 0.75, style: 0.5, speed: 1 },
         silenceTrim: { enabled: true, threshold: -40, minSilenceMs: 250 },
-        sfxLibrary: [
-          { id: "notification", name: "notification" },
-          { id: "ding", name: "ding" },
-          { id: "pop", name: "pop" },
-          { id: "whoosh", name: "whoosh" },
-        ],
-        sentSfx: "sent.mp3",
-        receivedSfx: "received.mp3",
+        sfxLibrary: [],
+        sentSfx: "sent",
+        receivedSfx: "received",
         rawMode: false,
 
         addContact: () => {
@@ -205,9 +208,43 @@ export const useEditor = create<EditorState & Actions>()(
         patch: (p) => set(p as EditorState),
         addCustomVoice: (v) =>
           set((s) => ({ customVoices: [...s.customVoices, v] })),
+        updateCustomVoice: (oldId, patch) =>
+          set((s) => ({
+            customVoices: s.customVoices.map((v) =>
+              v.id === oldId ? { ...v, ...patch } : v
+            ),
+          })),
         removeCustomVoice: (id) =>
           set((s) => ({ customVoices: s.customVoices.filter((v) => v.id !== id) })),
         addSfx: (s2) => set((s) => ({ sfxLibrary: [...s.sfxLibrary, s2] })),
+        importFromScript: ({ speakers, sfx }) => {
+          const s = get();
+          const existingVoiceNames = new Set([
+            ...s.customVoices.map((v) => v.name.toLowerCase()),
+          ]);
+          const newVoices = speakers
+            .filter((n) => !existingVoiceNames.has(n.toLowerCase()))
+            .map((name) => ({ id: "", name }));
+
+          const existingSfx = new Set(
+            s.sfxLibrary.map((x) => x.name.toLowerCase())
+          );
+          const reserved = new Set(["sent", "received"]);
+          const newSfx = sfx
+            .filter(
+              (n) =>
+                !existingSfx.has(n.toLowerCase()) && !reserved.has(n.toLowerCase())
+            )
+            .map((name) => ({ id: `${name}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, name }));
+
+          if (newVoices.length || newSfx.length) {
+            set({
+              customVoices: [...s.customVoices, ...newVoices],
+              sfxLibrary: [...s.sfxLibrary, ...newSfx],
+            });
+          }
+          return { addedSpeakers: newVoices.length, addedSfx: newSfx.length };
+        },
       };
     },
     { name: "imsg-editor-v1" }

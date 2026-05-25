@@ -20,6 +20,7 @@ import {
   Clock,
   Megaphone,
   CircleSlash,
+  AlertTriangle,
 } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -39,6 +40,8 @@ export function BubbleCard({ contactId, bubble }: { contactId: string; bubble: B
   const del = useEditor((s) => s.deleteBubble);
   const customVoices = useEditor((s) => s.customVoices);
   const sfxLibrary = useEditor((s) => s.sfxLibrary);
+  const defaultMeVoice = useEditor((s) => s.defaultMeVoice);
+  const defaultThemVoice = useEditor((s) => s.defaultThemVoice);
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: bubble.id });
@@ -49,7 +52,23 @@ export function BubbleCard({ contactId, bubble }: { contactId: string; bubble: B
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const voices = [...ELEVENLABS_VOICES, ...customVoices];
+  const voices = [...ELEVENLABS_VOICES, ...customVoices.filter((v) => v.id)];
+  const sfxOptions = [
+    { id: "sent", name: "Sent (default)" },
+    { id: "received", name: "Received (default)" },
+    ...sfxLibrary,
+  ];
+
+  // Warnings
+  const warnings: string[] = [];
+  if (bubble.type === "image" && !bubble.imageUrl) warnings.push("Add an image");
+  if (
+    (bubble.type === "text" || bubble.type === "audio") &&
+    !bubble.speakerVoiceId
+  ) {
+    const def = bubble.side === "me" ? defaultMeVoice : defaultThemVoice;
+    if (!def) warnings.push("Set a voice ID for this speaker");
+  }
 
   return (
     <div
@@ -57,7 +76,8 @@ export function BubbleCard({ contactId, bubble }: { contactId: string; bubble: B
       style={style}
       className={cn(
         "group rounded-xl border bg-card p-3 shadow-sm transition-shadow",
-        "hover:shadow-md"
+        "hover:shadow-md",
+        warnings.length && "border-amber-400/60"
       )}
     >
       <div className="flex items-start gap-2">
@@ -72,7 +92,6 @@ export function BubbleCard({ contactId, bubble }: { contactId: string; bubble: B
 
         <div className="flex-1 space-y-2">
           <div className="flex flex-wrap items-center gap-1.5">
-            {/* Side toggle */}
             <div className="flex rounded-md border bg-muted p-0.5 text-xs">
               {(["me", "them"] as const).map((s) => (
                 <button
@@ -90,7 +109,6 @@ export function BubbleCard({ contactId, bubble }: { contactId: string; bubble: B
               ))}
             </div>
 
-            {/* Type */}
             <Select
               value={bubble.type}
               onValueChange={(v) => update(contactId, bubble.id, { type: v as Bubble["type"] })}
@@ -109,7 +127,6 @@ export function BubbleCard({ contactId, bubble }: { contactId: string; bubble: B
               </SelectContent>
             </Select>
 
-            {/* Voice */}
             {(bubble.type === "text" || bubble.type === "audio") && (
               <Select
                 value={bubble.speakerVoiceId ?? "__default"}
@@ -133,7 +150,6 @@ export function BubbleCard({ contactId, bubble }: { contactId: string; bubble: B
               </Select>
             )}
 
-            {/* SFX */}
             {bubble.type === "text" && (
               <Select
                 value={bubble.sfx ?? "__none"}
@@ -141,14 +157,14 @@ export function BubbleCard({ contactId, bubble }: { contactId: string; bubble: B
                   update(contactId, bubble.id, { sfx: v === "__none" ? undefined : v })
                 }
               >
-                <SelectTrigger className="h-7 w-28 text-xs">
+                <SelectTrigger className="h-7 w-32 text-xs">
                   <SelectValue placeholder="SFX" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none" className="text-xs">No SFX</SelectItem>
-                  {sfxLibrary.map((s) => (
-                    <SelectItem key={s.id} value={s.id} className="text-xs">
-                      {s.name}
+                  {sfxOptions.map((x) => (
+                    <SelectItem key={x.id} value={x.id} className="text-xs">
+                      {x.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -156,6 +172,15 @@ export function BubbleCard({ contactId, bubble }: { contactId: string; bubble: B
             )}
 
             <div className="flex-1" />
+            {warnings.length > 0 && (
+              <Badge
+                variant="outline"
+                className="gap-1 border-amber-400/60 text-amber-700"
+                title={warnings.join(" · ")}
+              >
+                <AlertTriangle className="h-3 w-3" /> {warnings.length}
+              </Badge>
+            )}
             <button
               onClick={() => del(contactId, bubble.id)}
               className="rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
@@ -165,7 +190,6 @@ export function BubbleCard({ contactId, bubble }: { contactId: string; bubble: B
             </button>
           </div>
 
-          {/* Body by type */}
           {bubble.type === "text" && (
             <>
               <Textarea
@@ -284,6 +308,13 @@ export function BubbleCard({ contactId, bubble }: { contactId: string; bubble: B
             <p className="text-xs italic text-muted-foreground">
               Silent bubble — shown in chat but no TTS played.
             </p>
+          )}
+
+          {warnings.length > 0 && (
+            <div className="flex items-start gap-1.5 rounded-md bg-amber-50 p-2 text-[11px] text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+              <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+              <span>{warnings.join(" · ")}</span>
+            </div>
           )}
         </div>
       </div>
