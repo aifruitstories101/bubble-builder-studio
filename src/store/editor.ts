@@ -1,252 +1,129 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-
-export type BubbleType =
-  | "text"
-  | "image"
-  | "audio"
-  | "break"
-  | "promo"
-  | "none";
-
-export type PromoKind = "plug" | "rizz";
-
-export type Bubble = {
-  id: string;
-  type: BubbleType;
-  side: "me" | "them";
-  text: string;
-  ttsOverride?: string;
-  speakerVoiceId?: string;
-  speakerLabel?: string;
-  imageUrl?: string;
-  breakSeconds?: number;
-  sfx?: string;
-  // promo
-  promoKind?: PromoKind;
-  promoIntroText?: string;
-  promoIntroVoiceId?: string;
-  promoReplyText?: string;
-  promoReplyVoiceId?: string;
-};
-
-export type Contact = {
-  id: string;
-  name: string;
-  avatarUrl?: string;
-  unread: number;
-  bubbles: Bubble[];
-};
+import type { ParsedAssets } from "@/lib/script-parser";
 
 export type TTSProvider = "elevenlabs" | "ai33pro";
-
 export type SfxItem = { id: string; name: string; url?: string };
 
 export type EditorState = {
-  contacts: Contact[];
-  activeContactId: string;
-  // appearance
-  theme: "dark" | "light";
-  bubbleColor: "blue" | "green";
-  cornerRadius: number;
-  bubbleFontSize: number;
-  bgColor: string;
-  posterEveryPage: boolean;
-  revealAnimation: boolean;
-  bottomReserveRatio: number;
+  script: string;
   // tts
   ttsProvider: TTSProvider;
   apiKeys: { elevenlabs: string; ai33pro: string };
   defaultMeVoice: string;
   defaultThemVoice: string;
+  // name -> voice id
   customVoices: { id: string; name: string }[];
   voiceSettings: { stability: number; similarity: number; style: number; speed: number };
-  silenceTrim: { enabled: boolean; threshold: number; minSilenceMs: number };
+  // sfx
   sfxLibrary: SfxItem[];
   sentSfx: string;
   sentSfxUrl?: string;
   receivedSfx: string;
   receivedSfxUrl?: string;
-  // ui
-  rawMode: boolean;
+  // assets keyed by filename
+  imageAssets: Record<string, string>;
+  contactAvatarAssets: Record<string, string>;
+  // detected (last parse)
+  detectedSpeakers: string[];
+  detectedSfx: string[];
+  detectedImages: string[];
+  detectedContactAvatars: string[];
 };
 
 type Actions = {
-  addContact: () => void;
-  deleteContact: (id: string) => void;
-  setActiveContact: (id: string) => void;
-  updateContact: (id: string, patch: Partial<Contact>) => void;
-  addBubble: (contactId: string, side?: "me" | "them") => void;
-  updateBubble: (contactId: string, bubbleId: string, patch: Partial<Bubble>) => void;
-  deleteBubble: (contactId: string, bubbleId: string) => void;
-  reorderBubbles: (contactId: string, fromIdx: number, toIdx: number) => void;
   patch: (p: Partial<EditorState>) => void;
-  addCustomVoice: (v: { id: string; name: string }) => void;
-  updateCustomVoice: (oldId: string, patch: { id?: string; name?: string }) => void;
-  removeCustomVoice: (id: string) => void;
-  addSfx: (s: SfxItem) => void;
-  importFromScript: (
-    parsed: { speakers: string[]; sfx: string[] }
-  ) => { addedSpeakers: number; addedSfx: number };
+  setScript: (s: string) => void;
+  applyDetected: (p: ParsedAssets) => void;
+  setVoiceId: (name: string, id: string) => void;
+  removeVoice: (name: string) => void;
+  addSfxFile: (name: string, url: string) => void;
+  setImageAsset: (filename: string, url: string) => void;
+  setContactAvatarAsset: (filename: string, url: string) => void;
 };
-
-const uid = () => Math.random().toString(36).slice(2, 10);
-
-const seedContact = (): Contact => ({
-  id: uid(),
-  name: "John",
-  unread: 12,
-  bubbles: [
-    { id: uid(), type: "text", side: "me", text: "Hello there!" },
-    { id: uid(), type: "text", side: "them", text: "Hey whats up?" },
-    { id: uid(), type: "break", side: "me", text: "", breakSeconds: 2 },
-    { id: uid(), type: "text", side: "me", text: "Wanna see something cool?" },
-    {
-      id: uid(),
-      type: "promo",
-      side: "me",
-      text: "",
-      promoKind: "plug",
-      promoIntroText: "Check this out",
-      promoReplyText: "That looks amazing!",
-    },
-  ],
-});
 
 export const useEditor = create<EditorState & Actions>()(
   persist(
-    (set, get) => {
-      const first = seedContact();
-      return {
-        contacts: [first],
-        activeContactId: first.id,
-        theme: "light",
-        bubbleColor: "blue",
-        cornerRadius: 22,
-        bubbleFontSize: 40,
-        bgColor: "#00ff00",
-        posterEveryPage: false,
-        revealAnimation: true,
-        bottomReserveRatio: 0.3,
-        ttsProvider: "elevenlabs",
-        apiKeys: { elevenlabs: "", ai33pro: "" },
-        defaultMeVoice: "JBFqnCBsd6RMkjVDRZzb",
-        defaultThemVoice: "EXAVITQu4vr4xnSDxMaL",
-        customVoices: [],
-        voiceSettings: { stability: 0.5, similarity: 0.75, style: 0.5, speed: 1 },
-        silenceTrim: { enabled: true, threshold: -40, minSilenceMs: 250 },
-        sfxLibrary: [],
-        sentSfx: "sent",
-        receivedSfx: "received",
-        rawMode: false,
+    (set, get) => ({
+      script: `# Sample
+iMessage: John
+Sara>me: Hey! [sent]
+Bob>them: Whats up [received]
+me: 1.jpg
+<break: 2s>
+Sara>me: Check this {pic}
+plugsay>Sara: What do you think?
+plug>Sara: That looks amazing!
+`,
+      ttsProvider: "elevenlabs",
+      apiKeys: { elevenlabs: "", ai33pro: "" },
+      defaultMeVoice: "JBFqnCBsd6RMkjVDRZzb",
+      defaultThemVoice: "EXAVITQu4vr4xnSDxMaL",
+      customVoices: [],
+      voiceSettings: { stability: 0.5, similarity: 0.75, style: 0.5, speed: 1 },
+      sfxLibrary: [],
+      sentSfx: "sent",
+      receivedSfx: "received",
+      imageAssets: {},
+      contactAvatarAssets: {},
+      detectedSpeakers: [],
+      detectedSfx: [],
+      detectedImages: [],
+      detectedContactAvatars: [],
 
-        addContact: () => {
-          const c: Contact = { id: uid(), name: "New Contact", unread: 0, bubbles: [] };
-          set((s) => ({ contacts: [...s.contacts, c], activeContactId: c.id }));
-        },
-        deleteContact: (id) => {
-          const s = get();
-          const remaining = s.contacts.filter((c) => c.id !== id);
-          set({
-            contacts: remaining.length ? remaining : [seedContact()],
-            activeContactId:
-              s.activeContactId === id
-                ? (remaining[0]?.id ?? "")
-                : s.activeContactId,
-          });
-        },
-        setActiveContact: (id) => set({ activeContactId: id }),
-        updateContact: (id, patch) =>
-          set((s) => ({
-            contacts: s.contacts.map((c) => (c.id === id ? { ...c, ...patch } : c)),
-          })),
-        addBubble: (contactId, side = "me") =>
-          set((s) => ({
-            contacts: s.contacts.map((c) =>
-              c.id === contactId
-                ? {
-                    ...c,
-                    bubbles: [
-                      ...c.bubbles,
-                      { id: uid(), type: "text", side, text: "" },
-                    ],
-                  }
-                : c
-            ),
-          })),
-        updateBubble: (contactId, bubbleId, patch) =>
-          set((s) => ({
-            contacts: s.contacts.map((c) =>
-              c.id === contactId
-                ? {
-                    ...c,
-                    bubbles: c.bubbles.map((b) =>
-                      b.id === bubbleId ? { ...b, ...patch } : b
-                    ),
-                  }
-                : c
-            ),
-          })),
-        deleteBubble: (contactId, bubbleId) =>
-          set((s) => ({
-            contacts: s.contacts.map((c) =>
-              c.id === contactId
-                ? { ...c, bubbles: c.bubbles.filter((b) => b.id !== bubbleId) }
-                : c
-            ),
-          })),
-        reorderBubbles: (contactId, fromIdx, toIdx) =>
-          set((s) => ({
-            contacts: s.contacts.map((c) => {
-              if (c.id !== contactId) return c;
-              const arr = [...c.bubbles];
-              const [m] = arr.splice(fromIdx, 1);
-              arr.splice(toIdx, 0, m);
-              return { ...c, bubbles: arr };
-            }),
-          })),
-        patch: (p) => set(p as EditorState),
-        addCustomVoice: (v) =>
-          set((s) => ({ customVoices: [...s.customVoices, v] })),
-        updateCustomVoice: (oldId, patch) =>
-          set((s) => ({
-            customVoices: s.customVoices.map((v) =>
-              v.id === oldId ? { ...v, ...patch } : v
-            ),
-          })),
-        removeCustomVoice: (id) =>
-          set((s) => ({ customVoices: s.customVoices.filter((v) => v.id !== id) })),
-        addSfx: (s2) => set((s) => ({ sfxLibrary: [...s.sfxLibrary, s2] })),
-        importFromScript: ({ speakers, sfx }) => {
-          const s = get();
-          const existingVoiceNames = new Set([
-            ...s.customVoices.map((v) => v.name.toLowerCase()),
-          ]);
-          const newVoices = speakers
-            .filter((n) => !existingVoiceNames.has(n.toLowerCase()))
-            .map((name) => ({ id: "", name }));
-
-          const existingSfx = new Set(
-            s.sfxLibrary.map((x) => x.name.toLowerCase())
-          );
-          const reserved = new Set(["sent", "received"]);
-          const newSfx = sfx
-            .filter(
-              (n) =>
-                !existingSfx.has(n.toLowerCase()) && !reserved.has(n.toLowerCase())
-            )
-            .map((name) => ({ id: `${name}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, name }));
-
-          if (newVoices.length || newSfx.length) {
-            set({
-              customVoices: [...s.customVoices, ...newVoices],
-              sfxLibrary: [...s.sfxLibrary, ...newSfx],
-            });
+      patch: (p) => set(p as EditorState),
+      setScript: (script) => set({ script }),
+      applyDetected: (p) => {
+        const s = get();
+        const have = new Set(s.customVoices.map((v) => v.name.toLowerCase()));
+        const newVoices = p.speakers
+          .filter((n) => !have.has(n.toLowerCase()))
+          .map((name) => ({ id: "", name }));
+        const haveSfx = new Set(s.sfxLibrary.map((x) => x.name.toLowerCase()));
+        const reserved = new Set(["sent", "received"]);
+        const newSfx = p.sfx
+          .filter((n) => !haveSfx.has(n.toLowerCase()) && !reserved.has(n.toLowerCase()))
+          .map((name) => ({ id: `${name}-${Math.random().toString(36).slice(2, 7)}`, name }));
+        set({
+          customVoices: [...s.customVoices, ...newVoices],
+          sfxLibrary: [...s.sfxLibrary, ...newSfx],
+          detectedSpeakers: p.speakers,
+          detectedSfx: p.sfx,
+          detectedImages: p.images,
+          detectedContactAvatars: p.contactAvatars,
+        });
+      },
+      setVoiceId: (name, id) =>
+        set((s) => {
+          const exists = s.customVoices.some((v) => v.name === name);
+          return {
+            customVoices: exists
+              ? s.customVoices.map((v) => (v.name === name ? { ...v, id } : v))
+              : [...s.customVoices, { name, id }],
+          };
+        }),
+      removeVoice: (name) =>
+        set((s) => ({ customVoices: s.customVoices.filter((v) => v.name !== name) })),
+      addSfxFile: (name, url) =>
+        set((s) => {
+          const idx = s.sfxLibrary.findIndex((x) => x.name.toLowerCase() === name.toLowerCase());
+          if (idx >= 0) {
+            const arr = [...s.sfxLibrary];
+            arr[idx] = { ...arr[idx], url };
+            return { sfxLibrary: arr };
           }
-          return { addedSpeakers: newVoices.length, addedSfx: newSfx.length };
-        },
-      };
-    },
-    { name: "imsg-editor-v1" }
+          return {
+            sfxLibrary: [
+              ...s.sfxLibrary,
+              { id: `${name}-${Math.random().toString(36).slice(2, 7)}`, name, url },
+            ],
+          };
+        }),
+      setImageAsset: (filename, url) =>
+        set((s) => ({ imageAssets: { ...s.imageAssets, [filename]: url } })),
+      setContactAvatarAsset: (filename, url) =>
+        set((s) => ({ contactAvatarAssets: { ...s.contactAvatarAssets, [filename]: url } })),
+    }),
+    { name: "cyno-script-v2" }
   )
 );
