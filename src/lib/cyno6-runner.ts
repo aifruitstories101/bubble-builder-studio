@@ -6,16 +6,21 @@ import type { EditorState } from "@/store/editor";
 export type CynoPayload = {
   script: string;
   provider: EditorState["ttsProvider"];
+  speakerPrefix: "Speaker" | "mx_Speaker";
   apiKey: string;
-  defaultVoices: { me: string; them: string };
   voiceMap: Record<string, string>;
   voiceSettings: EditorState["voiceSettings"];
+  silenceTrim: EditorState["silenceTrim"];
   sent: { name: string; url?: string };
   received: { name: string; url?: string };
   sfx: Record<string, string>;
   images: Record<string, string>;
   contactAvatars: Record<string, string>;
 };
+
+export function speakerPrefixFor(p: EditorState["ttsProvider"]): "Speaker" | "mx_Speaker" {
+  return p === "minimax" ? "mx_Speaker" : "Speaker";
+}
 
 export function buildCynoPayload(s: EditorState): CynoPayload {
   const voiceMap: Record<string, string> = {};
@@ -26,13 +31,20 @@ export function buildCynoPayload(s: EditorState): CynoPayload {
   s.sfxLibrary.forEach((x) => {
     if (x.url) sfx[x.name] = x.url;
   });
+  const apiKey =
+    s.ttsProvider === "elevenlabs"
+      ? s.apiKeys.elevenlabs
+      : s.ttsProvider === "minimax"
+        ? s.apiKeys.minimax
+        : s.apiKeys.ai33pro;
   return {
     script: s.script,
     provider: s.ttsProvider,
-    apiKey: s.ttsProvider === "elevenlabs" ? s.apiKeys.elevenlabs : s.apiKeys.ai33pro,
-    defaultVoices: { me: s.defaultMeVoice, them: s.defaultThemVoice },
+    speakerPrefix: speakerPrefixFor(s.ttsProvider),
+    apiKey,
     voiceMap,
     voiceSettings: s.voiceSettings,
+    silenceTrim: s.silenceTrim,
     sent: { name: s.sentSfx, url: s.sentSfxUrl },
     received: { name: s.receivedSfx, url: s.receivedSfxUrl },
     sfx,
@@ -41,28 +53,11 @@ export function buildCynoPayload(s: EditorState): CynoPayload {
   };
 }
 
-// Mock progress runner. Replace with a real fetch to your cyno6.js renderer.
-export async function runCyno6(
-  payload: CynoPayload,
-  onProgress: (pct: number) => void,
-  signal?: AbortSignal
-): Promise<{ ok: true; payload: CynoPayload }> {
-  const totalMs = 4000;
-  const step = 80;
-  let elapsed = 0;
-  return new Promise((resolve, reject) => {
-    const t = setInterval(() => {
-      if (signal?.aborted) {
-        clearInterval(t);
-        reject(new Error("aborted"));
-        return;
-      }
-      elapsed += step;
-      onProgress(Math.min(100, Math.round((elapsed / totalMs) * 100)));
-      if (elapsed >= totalMs) {
-        clearInterval(t);
-        resolve({ ok: true, payload });
-      }
-    }, step);
-  });
+export function downloadPayload(payload: CynoPayload, filename = "cyno6-payload.json") {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
