@@ -62,11 +62,10 @@ plugsay>Sara: What do you think?
 plug>Sara: That looks amazing!
 `,
       ttsProvider: "elevenlabs",
-      apiKeys: { elevenlabs: "", ai33pro: "" },
-      defaultMeVoice: "JBFqnCBsd6RMkjVDRZzb",
-      defaultThemVoice: "EXAVITQu4vr4xnSDxMaL",
+      apiKeys: { elevenlabs: "", ai33pro: "", minimax: "" },
       customVoices: [],
       voiceSettings: { stability: 0.5, similarity: 0.75, style: 0.5, speed: 1 },
+      silenceTrim: { enabled: true, thresholdDb: -40, minSilenceMs: 300, keepPaddingMs: 80 },
       sfxLibrary: [],
       sentSfx: "sent",
       receivedSfx: "received",
