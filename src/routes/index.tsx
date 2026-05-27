@@ -1,22 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useEditor } from "@/store/editor";
 import { parseScriptForAssets } from "@/lib/script-parser";
-import { buildCynoPayload, runCyno6 } from "@/lib/cyno6-runner";
-import { ELEVENLABS_VOICES } from "@/lib/voices";
+import { buildCynoPayload, downloadPayload, speakerPrefixFor } from "@/lib/cyno6-runner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -26,7 +17,6 @@ import {
   Film,
   FileCode2,
   Image as ImageIcon,
-  Loader2,
   Mic,
   Music4,
   Play,
@@ -55,10 +45,7 @@ function readFile(accept: string, cb: (url: string, name: string) => void) {
 
 function App() {
   const s = useEditor();
-  const [phase, setPhase] = useState<"idle" | "rendering" | "done">("idle");
-  const [progress, setProgress] = useState(0);
   const [showKey, setShowKey] = useState(false);
-  const abortRef = useRef<AbortController | null>(null);
 
   const parse = () => {
     const parsed = parseScriptForAssets(s.script);
@@ -107,21 +94,13 @@ function App() {
     return w;
   }, [s, voiceMap]);
 
-  const render = async () => {
+  const render = () => {
     if (warnings.length > 0) {
-      toast.warning(`Rendering with ${warnings.length} warning${warnings.length === 1 ? "" : "s"}`);
+      toast.warning(`Downloading with ${warnings.length} warning${warnings.length === 1 ? "" : "s"}`);
     }
-    setPhase("rendering");
-    setProgress(0);
-    abortRef.current = new AbortController();
-    try {
-      const payload = buildCynoPayload(s);
-      await runCyno6(payload, setProgress, abortRef.current.signal);
-      setPhase("done");
-      toast.success("Render complete — payload built for cyno6.js");
-    } catch {
-      setPhase("idle");
-    }
+    const payload = buildCynoPayload(s);
+    downloadPayload(payload);
+    toast.success("Render payload downloaded — pass to cyno6.js");
   };
 
   return (
@@ -175,13 +154,17 @@ function App() {
           />
         </Section>
 
-        {/* Provider + keys + default voices */}
-        <Section icon={<Mic className="h-4 w-4" />} title="2. TTS provider & defaults">
+        {/* Provider + keys */}
+        <Section
+          icon={<Mic className="h-4 w-4" />}
+          title="2. TTS provider"
+          subtitle={`Script speaker prefix: ${speakerPrefixFor(s.ttsProvider)}>side: text`}
+        >
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <Label className="text-xs">Provider</Label>
               <div className="mt-1 flex gap-2">
-                {(["elevenlabs", "ai33pro"] as const).map((p) => (
+                {(["elevenlabs", "ai33pro", "minimax"] as const).map((p) => (
                   <button
                     key={p}
                     onClick={() => s.patch({ ttsProvider: p })}
@@ -190,10 +173,14 @@ function App() {
                       s.ttsProvider === p && "border-primary bg-primary/5 ring-1 ring-primary"
                     )}
                   >
-                    {p === "elevenlabs" ? "ElevenLabs" : "AI33Pro"}
+                    {p === "elevenlabs" ? "ElevenLabs" : p === "ai33pro" ? "AI33Pro" : "MiniMax"}
                   </button>
                 ))}
               </div>
+              <p className="mt-1.5 text-[11px] text-muted-foreground">
+                Use <code className="font-mono">{speakerPrefixFor(s.ttsProvider)}&gt;me:</code> /{" "}
+                <code className="font-mono">{speakerPrefixFor(s.ttsProvider)}&gt;them:</code> in script.
+              </p>
             </div>
             <div>
               <Label className="text-xs">API key</Label>
@@ -201,16 +188,23 @@ function App() {
                 <Input
                   type={showKey ? "text" : "password"}
                   value={
-                    s.ttsProvider === "elevenlabs" ? s.apiKeys.elevenlabs : s.apiKeys.ai33pro
+                    s.ttsProvider === "elevenlabs"
+                      ? s.apiKeys.elevenlabs
+                      : s.ttsProvider === "minimax"
+                        ? s.apiKeys.minimax
+                        : s.apiKeys.ai33pro
                   }
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const v = e.target.value;
                     s.patch({
                       apiKeys:
                         s.ttsProvider === "elevenlabs"
-                          ? { ...s.apiKeys, elevenlabs: e.target.value }
-                          : { ...s.apiKeys, ai33pro: e.target.value },
-                    })
-                  }
+                          ? { ...s.apiKeys, elevenlabs: v }
+                          : s.ttsProvider === "minimax"
+                            ? { ...s.apiKeys, minimax: v }
+                            : { ...s.apiKeys, ai33pro: v },
+                    });
+                  }}
                   className="pr-9 font-mono text-xs"
                   placeholder="Paste API key"
                 />
@@ -222,19 +216,8 @@ function App() {
                 </button>
               </div>
             </div>
-            <VoicePicker
-              label="Default voice — me"
-              value={s.defaultMeVoice}
-              onChange={(v) => s.patch({ defaultMeVoice: v })}
-              extra={s.customVoices}
-            />
-            <VoicePicker
-              label="Default voice — them"
-              value={s.defaultThemVoice}
-              onChange={(v) => s.patch({ defaultThemVoice: v })}
-              extra={s.customVoices}
-            />
           </div>
+
 
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {(
@@ -263,6 +246,57 @@ function App() {
                 />
               </div>
             ))}
+          </div>
+
+          <div className="mt-6 rounded-lg border bg-muted/30 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <Label className="text-sm font-semibold">Silence trimmer</Label>
+                <p className="text-[11px] text-muted-foreground">
+                  Removes long pauses inside generated TTS clips.
+                </p>
+              </div>
+              <label className="inline-flex cursor-pointer items-center gap-2 text-xs">
+                <input
+                  type="checkbox"
+                  checked={s.silenceTrim.enabled}
+                  onChange={(e) =>
+                    s.patch({ silenceTrim: { ...s.silenceTrim, enabled: e.target.checked } })
+                  }
+                />
+                Enabled
+              </label>
+            </div>
+            <div
+              className={cn(
+                "grid gap-4 sm:grid-cols-3",
+                !s.silenceTrim.enabled && "pointer-events-none opacity-50"
+              )}
+            >
+              {(
+                [
+                  ["thresholdDb", "Threshold (dB)", -80, -10, 1],
+                  ["minSilenceMs", "Min silence (ms)", 50, 2000, 10],
+                  ["keepPaddingMs", "Keep padding (ms)", 0, 500, 5],
+                ] as const
+              ).map(([k, lbl, min, max, step]) => (
+                <div key={k}>
+                  <div className="mb-1 flex justify-between text-xs">
+                    <Label>{lbl}</Label>
+                    <span className="font-mono text-muted-foreground">{s.silenceTrim[k]}</span>
+                  </div>
+                  <Slider
+                    value={[s.silenceTrim[k]]}
+                    min={min}
+                    max={max}
+                    step={step}
+                    onValueChange={(v) =>
+                      s.patch({ silenceTrim: { ...s.silenceTrim, [k]: v[0] } })
+                    }
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         </Section>
 
@@ -450,47 +484,13 @@ function App() {
           )}
 
           <div className="flex items-center gap-3">
-            {phase === "rendering" ? (
-              <Button size="lg" disabled>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Rendering…
-              </Button>
-            ) : phase === "done" ? (
-              <Button
-                size="lg"
-                onClick={() => {
-                  const payload = buildCynoPayload(s);
-                  const blob = new Blob([JSON.stringify(payload, null, 2)], {
-                    type: "application/json",
-                  });
-                  const a = document.createElement("a");
-                  a.href = URL.createObjectURL(blob);
-                  a.download = "cyno6-payload.json";
-                  a.click();
-                }}
-              >
-                <Download className="mr-2 h-4 w-4" /> Download payload
-              </Button>
-            ) : (
-              <Button size="lg" onClick={render}>
-                <Film className="mr-2 h-4 w-4" /> Render video
-              </Button>
-            )}
-            {phase === "done" && (
-              <Button variant="outline" onClick={() => setPhase("idle")}>
-                Render again
-              </Button>
-            )}
+            <Button size="lg" onClick={render}>
+              <Download className="mr-2 h-4 w-4" /> Download render payload (.json)
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Bundles script, voice IDs, API key, SFX, images & silence-trim settings for cyno6.js.
+            </p>
           </div>
-
-          {phase !== "idle" && (
-            <div className="mt-4 space-y-1.5">
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Render progress</span>
-                <span className="font-mono">{progress} / 100</span>
-              </div>
-              <Progress value={progress} />
-            </div>
-          )}
         </Section>
       </main>
     </div>
@@ -611,37 +611,6 @@ function AssetRow({
       <Button size="sm" variant={url ? "ghost" : "default"} onClick={onUpload}>
         <Upload className="mr-1 h-3.5 w-3.5" /> {url ? "Replace" : "Upload"}
       </Button>
-    </div>
-  );
-}
-
-function VoicePicker({
-  label,
-  value,
-  onChange,
-  extra,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  extra: { id: string; name: string }[];
-}) {
-  const all = [...ELEVENLABS_VOICES, ...extra.filter((v) => v.id)];
-  return (
-    <div>
-      <Label className="text-xs">{label}</Label>
-      <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="mt-1 h-9 text-xs">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {all.map((v) => (
-            <SelectItem key={v.id} value={v.id} className="text-xs">
-              {v.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
     </div>
   );
 }

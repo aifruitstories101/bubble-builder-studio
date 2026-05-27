@@ -2,19 +2,25 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { ParsedAssets } from "@/lib/script-parser";
 
-export type TTSProvider = "elevenlabs" | "ai33pro";
+export type TTSProvider = "elevenlabs" | "ai33pro" | "minimax";
 export type SfxItem = { id: string; name: string; url?: string };
+
+export type SilenceTrim = {
+  enabled: boolean;
+  thresholdDb: number;
+  minSilenceMs: number;
+  keepPaddingMs: number;
+};
 
 export type EditorState = {
   script: string;
   // tts
   ttsProvider: TTSProvider;
-  apiKeys: { elevenlabs: string; ai33pro: string };
-  defaultMeVoice: string;
-  defaultThemVoice: string;
+  apiKeys: { elevenlabs: string; ai33pro: string; minimax: string };
   // name -> voice id
   customVoices: { id: string; name: string }[];
   voiceSettings: { stability: number; similarity: number; style: number; speed: number };
+  silenceTrim: SilenceTrim;
   // sfx
   sfxLibrary: SfxItem[];
   sentSfx: string;
@@ -56,11 +62,10 @@ plugsay>Sara: What do you think?
 plug>Sara: That looks amazing!
 `,
       ttsProvider: "elevenlabs",
-      apiKeys: { elevenlabs: "", ai33pro: "" },
-      defaultMeVoice: "JBFqnCBsd6RMkjVDRZzb",
-      defaultThemVoice: "EXAVITQu4vr4xnSDxMaL",
+      apiKeys: { elevenlabs: "", ai33pro: "", minimax: "" },
       customVoices: [],
       voiceSettings: { stability: 0.5, similarity: 0.75, style: 0.5, speed: 1 },
+      silenceTrim: { enabled: true, thresholdDb: -40, minSilenceMs: 300, keepPaddingMs: 80 },
       sfxLibrary: [],
       sentSfx: "sent",
       receivedSfx: "received",
