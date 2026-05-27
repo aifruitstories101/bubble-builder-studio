@@ -260,6 +260,57 @@ function App() {
               </div>
             ))}
           </div>
+
+          <div className="mt-6 rounded-lg border bg-muted/30 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <Label className="text-sm font-semibold">Silence trimmer</Label>
+                <p className="text-[11px] text-muted-foreground">
+                  Removes long pauses inside generated TTS clips.
+                </p>
+              </div>
+              <label className="inline-flex cursor-pointer items-center gap-2 text-xs">
+                <input
+                  type="checkbox"
+                  checked={s.silenceTrim.enabled}
+                  onChange={(e) =>
+                    s.patch({ silenceTrim: { ...s.silenceTrim, enabled: e.target.checked } })
+                  }
+                />
+                Enabled
+              </label>
+            </div>
+            <div
+              className={cn(
+                "grid gap-4 sm:grid-cols-3",
+                !s.silenceTrim.enabled && "pointer-events-none opacity-50"
+              )}
+            >
+              {(
+                [
+                  ["thresholdDb", "Threshold (dB)", -80, -10, 1],
+                  ["minSilenceMs", "Min silence (ms)", 50, 2000, 10],
+                  ["keepPaddingMs", "Keep padding (ms)", 0, 500, 5],
+                ] as const
+              ).map(([k, lbl, min, max, step]) => (
+                <div key={k}>
+                  <div className="mb-1 flex justify-between text-xs">
+                    <Label>{lbl}</Label>
+                    <span className="font-mono text-muted-foreground">{s.silenceTrim[k]}</span>
+                  </div>
+                  <Slider
+                    value={[s.silenceTrim[k]]}
+                    min={min}
+                    max={max}
+                    step={step}
+                    onValueChange={(v) =>
+                      s.patch({ silenceTrim: { ...s.silenceTrim, [k]: v[0] } })
+                    }
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
         </Section>
 
         {/* Speakers */}
