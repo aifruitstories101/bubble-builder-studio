@@ -624,34 +624,3 @@ function AssetRow({
     </div>
   );
 }
-
-function VoicePicker({
-  label,
-  value,
-  onChange,
-  extra,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  extra: { id: string; name: string }[];
-}) {
-  const all = [...ELEVENLABS_VOICES, ...extra.filter((v) => v.id)];
-  return (
-    <div>
-      <Label className="text-xs">{label}</Label>
-      <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="mt-1 h-9 text-xs">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {all.map((v) => (
-            <SelectItem key={v.id} value={v.id} className="text-xs">
-              {v.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
-  );
-}
