@@ -17,7 +17,6 @@ import {
   Film,
   FileCode2,
   Image as ImageIcon,
-  Loader2,
   Mic,
   Music4,
   Play,
