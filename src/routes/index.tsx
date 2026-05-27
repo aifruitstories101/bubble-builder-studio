@@ -107,21 +107,13 @@ function App() {
     return w;
   }, [s, voiceMap]);
 
-  const render = async () => {
+  const render = () => {
     if (warnings.length > 0) {
-      toast.warning(`Rendering with ${warnings.length} warning${warnings.length === 1 ? "" : "s"}`);
+      toast.warning(`Downloading with ${warnings.length} warning${warnings.length === 1 ? "" : "s"}`);
     }
-    setPhase("rendering");
-    setProgress(0);
-    abortRef.current = new AbortController();
-    try {
-      const payload = buildCynoPayload(s);
-      await runCyno6(payload, setProgress, abortRef.current.signal);
-      setPhase("done");
-      toast.success("Render complete — payload built for cyno6.js");
-    } catch {
-      setPhase("idle");
-    }
+    const payload = buildCynoPayload(s);
+    downloadPayload(payload);
+    toast.success("Render payload downloaded — pass to cyno6.js");
   };
 
   return (
