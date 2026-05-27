@@ -497,47 +497,13 @@ function App() {
           )}
 
           <div className="flex items-center gap-3">
-            {phase === "rendering" ? (
-              <Button size="lg" disabled>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Rendering…
-              </Button>
-            ) : phase === "done" ? (
-              <Button
-                size="lg"
-                onClick={() => {
-                  const payload = buildCynoPayload(s);
-                  const blob = new Blob([JSON.stringify(payload, null, 2)], {
-                    type: "application/json",
-                  });
-                  const a = document.createElement("a");
-                  a.href = URL.createObjectURL(blob);
-                  a.download = "cyno6-payload.json";
-                  a.click();
-                }}
-              >
-                <Download className="mr-2 h-4 w-4" /> Download payload
-              </Button>
-            ) : (
-              <Button size="lg" onClick={render}>
-                <Film className="mr-2 h-4 w-4" /> Render video
-              </Button>
-            )}
-            {phase === "done" && (
-              <Button variant="outline" onClick={() => setPhase("idle")}>
-                Render again
-              </Button>
-            )}
+            <Button size="lg" onClick={render}>
+              <Download className="mr-2 h-4 w-4" /> Download render payload (.json)
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Bundles script, voice IDs, API key, SFX, images & silence-trim settings for cyno6.js.
+            </p>
           </div>
-
-          {phase !== "idle" && (
-            <div className="mt-4 space-y-1.5">
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Render progress</span>
-                <span className="font-mono">{progress} / 100</span>
-              </div>
-              <Progress value={progress} />
-            </div>
-          )}
         </Section>
       </main>
     </div>
