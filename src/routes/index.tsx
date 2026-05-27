@@ -55,10 +55,7 @@ function readFile(accept: string, cb: (url: string, name: string) => void) {
 
 function App() {
   const s = useEditor();
-  const [phase, setPhase] = useState<"idle" | "rendering" | "done">("idle");
-  const [progress, setProgress] = useState(0);
   const [showKey, setShowKey] = useState(false);
-  const abortRef = useRef<AbortController | null>(null);
 
   const parse = () => {
     const parsed = parseScriptForAssets(s.script);
