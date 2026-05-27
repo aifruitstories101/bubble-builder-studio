@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
 import { useEditor } from "@/store/editor";
 import { parseScriptForAssets } from "@/lib/script-parser";
-import { buildCynoPayload, runCyno6 } from "@/lib/cyno6-runner";
+import { buildCynoPayload, downloadPayload, speakerPrefixFor } from "@/lib/cyno6-runner";
 import { ELEVENLABS_VOICES } from "@/lib/voices";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
