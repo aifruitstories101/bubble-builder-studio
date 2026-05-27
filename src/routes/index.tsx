@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useEditor } from "@/store/editor";
 import { parseScriptForAssets } from "@/lib/script-parser";
 import { buildCynoPayload, downloadPayload, speakerPrefixFor } from "@/lib/cyno6-runner";
