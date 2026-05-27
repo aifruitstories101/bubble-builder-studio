@@ -167,13 +167,17 @@ function App() {
           />
         </Section>
 
-        {/* Provider + keys + default voices */}
-        <Section icon={<Mic className="h-4 w-4" />} title="2. TTS provider & defaults">
+        {/* Provider + keys */}
+        <Section
+          icon={<Mic className="h-4 w-4" />}
+          title="2. TTS provider"
+          subtitle={`Script speaker prefix: ${speakerPrefixFor(s.ttsProvider)}>side: text`}
+        >
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <Label className="text-xs">Provider</Label>
               <div className="mt-1 flex gap-2">
-                {(["elevenlabs", "ai33pro"] as const).map((p) => (
+                {(["elevenlabs", "ai33pro", "minimax"] as const).map((p) => (
                   <button
                     key={p}
                     onClick={() => s.patch({ ttsProvider: p })}
@@ -182,10 +186,14 @@ function App() {
                       s.ttsProvider === p && "border-primary bg-primary/5 ring-1 ring-primary"
                     )}
                   >
-                    {p === "elevenlabs" ? "ElevenLabs" : "AI33Pro"}
+                    {p === "elevenlabs" ? "ElevenLabs" : p === "ai33pro" ? "AI33Pro" : "MiniMax"}
                   </button>
                 ))}
               </div>
+              <p className="mt-1.5 text-[11px] text-muted-foreground">
+                Use <code className="font-mono">{speakerPrefixFor(s.ttsProvider)}&gt;me:</code> /{" "}
+                <code className="font-mono">{speakerPrefixFor(s.ttsProvider)}&gt;them:</code> in script.
+              </p>
             </div>
             <div>
               <Label className="text-xs">API key</Label>
@@ -193,16 +201,23 @@ function App() {
                 <Input
                   type={showKey ? "text" : "password"}
                   value={
-                    s.ttsProvider === "elevenlabs" ? s.apiKeys.elevenlabs : s.apiKeys.ai33pro
+                    s.ttsProvider === "elevenlabs"
+                      ? s.apiKeys.elevenlabs
+                      : s.ttsProvider === "minimax"
+                        ? s.apiKeys.minimax
+                        : s.apiKeys.ai33pro
                   }
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const v = e.target.value;
                     s.patch({
                       apiKeys:
                         s.ttsProvider === "elevenlabs"
-                          ? { ...s.apiKeys, elevenlabs: e.target.value }
-                          : { ...s.apiKeys, ai33pro: e.target.value },
-                    })
-                  }
+                          ? { ...s.apiKeys, elevenlabs: v }
+                          : s.ttsProvider === "minimax"
+                            ? { ...s.apiKeys, minimax: v }
+                            : { ...s.apiKeys, ai33pro: v },
+                    });
+                  }}
                   className="pr-9 font-mono text-xs"
                   placeholder="Paste API key"
                 />
@@ -214,19 +229,8 @@ function App() {
                 </button>
               </div>
             </div>
-            <VoicePicker
-              label="Default voice — me"
-              value={s.defaultMeVoice}
-              onChange={(v) => s.patch({ defaultMeVoice: v })}
-              extra={s.customVoices}
-            />
-            <VoicePicker
-              label="Default voice — them"
-              value={s.defaultThemVoice}
-              onChange={(v) => s.patch({ defaultThemVoice: v })}
-              extra={s.customVoices}
-            />
           </div>
+
 
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {(
